@@ -1,0 +1,20 @@
+### Debugging HTTP requests for the application
+# Request to home page
+GET http://localhost:8000/
+
+###
+# Request to comments page
+GET http://localhost:8000/links
+
+###
+# Create a comment
+POST http://localhost:8000/links
+Content-Type: application/json
+
+{
+  "url": "https://google.com"
+}
+
+###
+# Show a specific comment
+GET http://localhost:8000/comments/1

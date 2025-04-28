@@ -1,7 +1,15 @@
 import gleam/erlang/process.{type Subject}
+import gleam/http.{Get, Http, Put}
+import gleam/http/request
+import gleam/http/response
+import gleam/httpc
 import gleam/io
+import gleam/json
+import gleam/list
 import gleam/otp/actor
+import gleam/result
 import gluid
+import link_document.{LinkDocument}
 
 pub type MuninMessage {
   PutLink(String, String)
@@ -38,13 +46,60 @@ fn handle_message(message: MuninMessage, _: Nil) -> actor.Next(MuninMessage, _) 
   }
 }
 
-fn make_put_link_call(from: String, link: String) {
+fn construct_document(from: String, link: String) {
+  json.object([
+    #("url", json.string(link)),
+    #("owner", json.string(from)),
+    #("@metadata", json.object([#("@collection", json.string("Links"))])),
+  ])
+}
+
+fn make_put_link_call(from: String, link: String) -> Nil {
   io.println("put link from: " <> from <> " link: " <> link)
-  io.println("link saved(?) with id " <> gluid.guidv4())
+  let id = from <> gluid.guidv4()
+
+  let document_string = construct_document(from, link) |> json.to_string
+
+  let req =
+    request.new()
+    |> request.set_scheme(http.Http)
+    |> request.set_host("brave_leakey:8080")
+    |> request.set_path("/databases/Munin/docs?id=" <> id)
+    |> request.set_body(document_string)
+    |> request.set_method(Put)
+
+  let resp = httpc.send(req)
+  case resp {
+    Ok(_) -> io.println("link saved(?) with id " <> id)
+    Error(_) -> io.println("failed to save link: ")
+  }
+  Nil
 }
 
 fn make_fetch_links_call(for: String) -> Result(List(String), Nil) {
   io.println("fetch links for: " <> for)
-  let links = ["link1", "link2", "link3"]
-  Ok(links)
+
+  let req =
+    request.new()
+    |> request.set_scheme(http.Http)
+    |> request.set_host("brave_leakey:8080")
+    |> request.set_path("/databases/Munin/docs?startsWith=" <> for)
+    |> request.set_method(Get)
+
+  let resp = httpc.send(req)
+
+  case resp {
+    Ok(body) -> {
+      io.println("response body: " <> body.body)
+      let json_value =
+        json.parse(body.body, link_document.links_result_decoder())
+
+      case json_value {
+        Ok(parsed_json) ->
+          Ok(parsed_json.results |> list.map(fn(link) { link.url }))
+        Error(_) -> Error(Nil)
+      }
+    }
+    Error(_) -> Error(Nil)
+  }
 }

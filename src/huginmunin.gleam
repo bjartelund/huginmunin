@@ -1,16 +1,14 @@
 import app/router
 import gleam/erlang/process
-import gleam/io
 import gleam/list
 import mist
 import munin
 import wisp
-import wisp/wisp_mist
 
 pub fn main() {
   io.println("Hello from huginmunin!")
   let assert Ok(munin) = munin.new()
-  munin.put_link(munin, "Bjarte", "link to google")
+  munin.put_link(munin, "Bjarte", "https://google.com")
   let assert Ok(links) = munin.fetch_links(munin, "Bjarte")
   list.each(links, io.println)
 

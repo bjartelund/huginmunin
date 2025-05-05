@@ -3,6 +3,7 @@ import gleam/dynamic/decode
 import gleam/erlang/process.{type Subject}
 import gleam/http.{Get, Post}
 import gleam/result
+import gleam/string
 import gleam/string_tree
 import link_document.{LinkDocument}
 import munin.{type MuninMessage}
@@ -52,9 +53,10 @@ fn links(req: Request) -> Response {
 
 fn list_links(munin: Subject(MuninMessage)) -> Response {
   // In a later example we'll show how to read from a database.
-  let assert Ok(links) = munin.fetch_links(munin, "from Bjarte")
+  let assert Ok(links) = munin.fetch_links(munin, "Bjarte")
+  let delimited = string.join(links, ",")
 
-  let html = string_tree.from_strings(links)
+  let html = string_tree.from_string(delimited)
   wisp.ok()
   |> wisp.html_body(html)
 }
@@ -67,7 +69,7 @@ fn create_links(munin: Subject(MuninMessage), req: Request) -> Response {
 
   let link = result.unwrap(link_result, LinkDocument("N/A"))
 
-  munin.put_link(munin, "bjarte", link.url)
+  munin.put_link(munin, "Bjarte", link.url)
   let html = string_tree.from_string(link.url)
 
   wisp.created()
